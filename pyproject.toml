@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secretlounge-ng"
+version = "1.9"
+authors = [{ name="sfan5" }]
+description = "a bot to make an anonymous group chat on Telegram"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "pyTelegramBotAPI>=4.19.0",
+  "pyYAML>=3.12",
+  'crypt-r; python_version>"3.11"',
+]
+
+[project.urls]
+"Homepage" = "https://github.com/secretlounge/secretlounge-ng"
+
+[tool.setuptools]
+packages = ["secretlounge_ng"]

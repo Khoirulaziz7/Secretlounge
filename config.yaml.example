@@ -1,0 +1,42 @@
+# Telegram bot token
+bot_token: "BOT_TOKEN_HERE"
+
+# supported db types: json, sqlite
+# both take a single argument which is the database file path
+database: [sqlite, "secretlounge.sqlite"]
+
+# salt used for obfuscating user IDs (optional)
+# Needs to be a hexadecimal string, use e.g. `openssl rand -hex 6` to generate.
+# It is recommended to set this. Reusing it between different bots is allowed.
+#secret_salt: ""
+
+# relay contacts
+allow_contacts: false
+# relay arbitrary documents/files (GIFs always work)
+allow_documents: true
+
+# allow mods to remove message without issuing a cooldown
+allow_remove_command: false
+
+# enable upvoting by reacting with thumbs-up to a message
+message_reaction_upvote: true
+
+# enable signing messages using /sign or /tsign as well as setting a tripcode
+enable_signing: false
+# limit usage of /sign to once in every interval (seconds)
+# defaults to 600 if not specified, set to 0 to disable
+#sign_limit_interval: 600
+
+# point of contact shown to blacklisted users (optional)
+#blacklist_contact: http://t.me/invite/something
+
+# duration (hours) during which new users can't send media or forwards (optional)
+#media_limit_period: 3
+
+# map of bots that users can refer to in their messages (optional)
+# e.g. >>>/foo/ would be turned into an inline link to http://t.me/foochatbot
+#linked_network:
+#  foo: foochatbot
+#  bar: barchatbot
+# alternatively the map can also be loaded from another YAML file using this syntax
+#linked_network: "./somewhere/bots.yml"

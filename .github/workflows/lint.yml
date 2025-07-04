@@ -1,0 +1,40 @@
+name: lint
+
+on:
+  push:
+    paths:
+      - '**.py'
+      - 'pyproject.toml'
+      - 'pylintrc'
+      - '.github/workflows/**.yml'
+  pull_request:
+    paths:
+      - '**.py'
+      - 'pyproject.toml'
+      - 'pylintrc'
+      - '.github/workflows/**.yml'
+
+jobs:
+
+  pylint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # minimum + latest
+        ver: ['3.8', '3.13']
+    container:
+      image: python:${{ matrix.ver }}
+    name: "pylint (Python ${{ matrix.ver }})"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install deps
+        run: |
+          pip install -e .
+          pip install pylint
+
+      - name: Lint
+        run: |
+          for mod in secretlounge_ng util; do
+            pylint --fail-under=0 --fail-on=E "$mod"
+          done
