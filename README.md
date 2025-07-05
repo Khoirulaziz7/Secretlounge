@@ -1,126 +1,159 @@
-secretlounge-ng
----------------
+# Bot Telegram Chat Anonim Indonesia
 
-A rewrite of [secretlounge](https://web.archive.org/web/20200920053736/https://github.com/6697/secretlounge), a bot to make an anonymous group chat on Telegram.
+Bot Telegram untuk chat anonim berbahasa Indonesia yang dapat di-deploy ke Vercel.
 
-The bot accepts messages, pictures, videos, etc. from any user and relays it to all other active users without revealing the author.
+## 🚀 Fitur Utama
 
-## Setup
+- **Chat Anonim**: Semua pesan diteruskan tanpa menampilkan identitas pengirim
+- **Bahasa Indonesia**: Interface dan pesan dalam bahasa Indonesia
+- **Validasi Channel**: Pengguna harus join channel tertentu untuk menggunakan bot
+- **Sistem Admin**: Perintah khusus untuk owner dan admin
+- **Broadcast**: Kirim pesan ke semua pengguna dengan opsi delay
+- **Moderasi**: Ban/unban pengguna, sistem peringatan
+- **Database MySQL**: Kompatibel dengan layanan cloud database
 
-You will need a Linux server or computer with Python 3 installed and access to the command line.
+## 📋 Persyaratan
+
+1. **Bot Telegram**: Buat bot baru di [@BotFather](https://t.me/BotFather)
+2. **Database MySQL**: Gunakan layanan seperti:
+   - [PlanetScale](https://planetscale.com/) (Gratis)
+   - [Railway](https://railway.app/) (Gratis tier)
+   - [Supabase](https://supabase.com/) (Gratis)
+3. **Vercel Account**: Untuk hosting bot
+
+## 🛠️ Setup dan Deployment
+
+### 1. Persiapan Bot Telegram
+
+1. Chat [@BotFather](https://t.me/BotFather)
+2. Buat bot baru: `/newbot`
+3. Ikuti instruksi dan simpan token bot
+4. Set privacy mode: `/setprivacy` → `Disable`
+5. Allow groups: `/setjoingroups` → `Enable`
+
+### 2. Setup Database
+
+Contoh menggunakan PlanetScale:
+
+1. Daftar di [PlanetScale](https://planetscale.com/)
+2. Buat database baru
+3. Dapatkan connection string MySQL
+4. Format: `mysql://username:password@host:port/database`
+
+### 3. Deploy ke Vercel
+
+1. Fork repository ini
+2. Connect ke Vercel
+3. Set environment variables:
 
 ```bash
-pip3 install -e .
-cp config.yaml.example config.yaml
-# Edit config.yaml with your favorite text editor
-./secretlounge-ng
+BOT_TOKEN=your_bot_token_from_botfather
+DATABASE_URL=mysql://user:pass@host:port/db
+WEBHOOK_URL=https://your-app.vercel.app
+OWNER_ID=your_telegram_user_id
+REQUIRED_CHANNEL=your_channel_username
+SECRET_SALT=random_32_char_string
 ```
 
-To run the bot in the background use a systemd service (preferred) or screen/tmux.
+4. Deploy project
 
-Note that you can also install it as a normal Python module and run it from anywhere
-like `python3 -m secretlounge_ng`, which I won't explain here.
+### 4. Setup Webhook
 
-## @BotFather Setup
-
-Message [@BotFather](https://t.me/BotFather) and configure your bot as follows:
-
-* `/setprivacy`: enabled
-* `/setjoingroups`: disabled
-* `/setcommands`: paste the command list below
-
-### Command list
-
+Setelah deploy berhasil, akses:
 ```
-start - Join the chat (start receiving messages)
-stop - Leave the chat (stop receiving messages)
-users - Find out how many users are in the chat
-info - Get info about your account
-sign - Sign a message with your username
-s - Alias of sign
-tsign - Sign a message with your tripcode
-t - Alias of tsign
-motd - Show the welcome message
-privacy - Show privacy policy
-version - Get version & source code of this bot
-modhelp - Show commands available to moderators
-adminhelp - Show commands available to admins
-toggledebug - Toggle debug mode (sends back all messages to you)
-togglekarma - Toggle karma notifications
-tripcode - Show or set the tripcode for your messages
+POST https://your-app.vercel.app/api/setup
 ```
 
-## FAQ
-
-1. **How do I unban a blacklisted user from my bot?**
-
-To unban someone you need their Telegram User ID (preferred) or username/profile name.
-If you have a name you can use `./util/blacklist.py find` to search your bot's database for the user record.
-
-You can then run `./util/blacklist.py unban 12345678` to remove the ban.
-
-2. **How do I demote someone I promoted to mod/admin at some point?**
-
-If you already have an User ID in mind, proceed below.
-Otherwise you can either use the find utility like explained above or run
-`./util/perms.py list` to list all users with elevated rank.
-
-Simply run `./util/perms.py set 12345678 user` to remove the users' privileges.
-
-This can also be used to grant an user higher privileges by exchanging the last argument with "*mod*" or "*admin*".
-
-3. **What is the suggested setup to run multiple bots?**
-
-The `blacklist.py` and `perms.py` script, including advanced functions like blacklist syncing
-(`./util/blacklist.py sync`), support a structure as follows where each bot
-has its own subdirectory:
-
-```
-root folder
-\-- bot1
-  \-- db.sqlite
-  \-- config.yaml
-\-- bot2
-  \-- db.sqlite
-  \-- ...
-\-- ...
-\-- README.md
-\-- secretlounge-ng
+Atau gunakan curl:
+```bash
+curl -X POST https://your-app.vercel.app/api/setup
 ```
 
-4. **Is this bot really anonymous?**
+## 🎯 Perintah Bot
 
-When using the source in this repository*¹*, unless you reveal yourself,
-ordinary users in the bot have zero possibilities of discovering your Telegram user.
+### Pengguna Umum
+- `/start` - Mulai menggunakan bot
+- `/help` - Bantuan dan panduan
+- `/info` - Informasi akun Anda
+- `/users` - Jumlah pengguna aktif
+- `/keluar` - Keluar dari chat
+- `/ping` - Cek status bot
 
-Mods and admins in the bot can not see your Telegram user, instead they can tell authors
-of recent messages apart through a pseudo-random ID returned by the `/info` command.
-This ID changes every 24 hours, messages also expire from the cache after 30 hours *²*
-(or if secretlounge-ng is restarted) meaning that they become unable to be deleted
-or their authors determined.
+### Admin
+- `/ban [user_id] [alasan]` - Ban pengguna
+- `/unban [user_id]` - Unban pengguna
+- `/admin [user_id]` - Angkat admin (khusus owner)
+- `/broadcast [pesan]` - Kirim pesan ke semua
+- `/broadcast_delay [detik] [pesan]` - Broadcast dengan jeda
+- `/setwelcome [pesan]` - Set pesan welcome
 
-People with access to the server the bot runs on have no direct, but a variety of
-indirect ways to determine who wrote a particular message.
+## 📱 Cara Menggunakan
 
-*¹*: It is impossible to ascertain this from afar. You have to trust the bot owner either way.
+1. **Join Channel**: Pengguna harus join channel yang ditentukan
+2. **Start Bot**: Ketik `/start` untuk bergabung
+3. **Kirim Pesan**: Semua pesan akan diteruskan secara anonim
+4. **ID Anonim**: Setiap pengguna mendapat ID anonim yang berubah harian
 
-*²*: If you say something identifiable every 24 hours, you can reasonably be tracked for longer periods.
-This quickly becomes infeasible to perform by hand with larger message volumes and user populations.
+## 🔧 Konfigurasi
 
-All of these assessments presume a sufficient user population in the bot so that anyone could blend in.
+### Environment Variables
 
-5. **Why don't polls work?**
+| Variable | Deskripsi | Contoh |
+|----------|-----------|---------|
+| `BOT_TOKEN` | Token dari @BotFather | `123456:ABC-DEF...` |
+| `DATABASE_URL` | URL koneksi MySQL | `mysql://user:pass@host/db` |
+| `WEBHOOK_URL` | URL aplikasi Vercel | `https://app.vercel.app` |
+| `OWNER_ID` | ID Telegram owner | `123456789` |
+| `REQUIRED_CHANNEL` | Channel wajib join | `mychannel` |
+| `SECRET_SALT` | Salt untuk enkripsi | `random32chars` |
 
-Telegram bots are able to create new polls and forward messages (including authorship),
-but they can't forward the poll itself as with other message types.
-Working around this is possible with some disadvantages, but has not been implemented yet.
+### Mendapatkan User ID
 
-6. **Is this code maintained?**
+Untuk mendapatkan Telegram User ID:
+1. Chat [@userinfobot](https://t.me/userinfobot)
+2. Kirim pesan apapun
+3. Bot akan reply dengan info termasuk User ID
 
-This codebase is in active use [over here](https://t.me/s/secretloungeproject).
-Updates are made either if there's something broken or when the author feels like it.
+## 🛡️ Keamanan
 
-## Notable forks
+- **ID Anonim**: Berubah setiap hari untuk privasi
+- **Validasi Channel**: Cegah spam dengan validasi membership
+- **Rate Limiting**: Sistem cooldown untuk mencegah spam
+- **Enkripsi ID**: Menggunakan bcrypt dengan salt
 
-* [CatLounge](https://github.com/CatLounge/catlounge-ng-meow) - has numerous new features including specifying cooldown time
-* [Furry fork](https://github.com/dogmike/secretlounge-ng) - not sure, but there's a bunch of things
+## 📊 Database Schema
+
+Bot akan otomatis membuat tabel:
+
+- `users`: Data pengguna dan status
+- `messages`: Log pesan (opsional)
+- `settings`: Pengaturan bot
+
+## 🚨 Troubleshooting
+
+### Bot tidak merespon
+1. Cek webhook: `GET https://api.telegram.org/bot<TOKEN>/getWebhookInfo`
+2. Pastikan environment variables benar
+3. Cek logs di Vercel dashboard
+
+### Database error
+1. Pastikan connection string benar
+2. Cek firewall database
+3. Verifikasi credentials
+
+### Channel validation gagal
+1. Pastikan bot adalah admin di channel
+2. Channel harus public atau bot di-invite
+3. Username channel tanpa @
+
+## 📄 Lisensi
+
+MIT License - Bebas digunakan dan dimodifikasi.
+
+## 🤝 Kontribusi
+
+Pull requests dan issues sangat diterima!
+
+## 📞 Support
+
+Jika ada pertanyaan atau butuh bantuan setup, buat issue di repository ini.
