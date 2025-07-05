@@ -21,13 +21,13 @@
     }
   ],
   "env": {
-    "BOT_TOKEN": "@bot_token",
-    "DATABASE_TYPE": "@database_type",
-    "DATABASE_URL": "@database_url",
+    "BOT_TOKEN": "5963135520:AAHmimWJje5rptJSqkzFeeVKhxxrvOkKt_g",
+    "DATABASE_TYPE": "mongodb",
+    "DATABASE_URL": "mongodb+srv://bot:HxU5un6vAwLphBOP@cluster1.uourzcz.mongodb.net/?retryWrites=true&w=majority&appName=cluster1",
     "WEBHOOK_URL": "@webhook_url",
-    "OWNER_ID": "@owner_id",
-    "REQUIRED_CHANNEL": "@required_channel",
-    "SECRET_SALT": "@secret_salt",
-    "JWT_SECRET": "@jwt_secret"
+    "OWNER_ID": "5615921474",
+    "REQUIRED_CHANNEL": "xyungcode",
+    "SECRET_SALT": "",
+    "JWT_SECRET": ""
   }
 }
