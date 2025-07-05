@@ -1,10 +1,9 @@
 const TelegramBot = require('node-telegram-bot-api');
-const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const db = require('../lib/database');
 
 // Konfigurasi
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const DATABASE_URL = process.env.DATABASE_URL;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const OWNER_ID = parseInt(process.env.OWNER_ID);
 const REQUIRED_CHANNEL = process.env.REQUIRED_CHANNEL;
@@ -12,51 +11,6 @@ const SECRET_SALT = process.env.SECRET_SALT;
 
 // Inisialisasi bot
 const bot = new TelegramBot(BOT_TOKEN);
-
-// Koneksi database
-let db;
-
-async function initDatabase() {
-  if (!db) {
-    db = await mysql.createConnection(DATABASE_URL);
-    
-    // Buat tabel jika belum ada
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS users (
-        id BIGINT PRIMARY KEY,
-        username VARCHAR(255),
-        first_name VARCHAR(255),
-        last_name VARCHAR(255),
-        is_active BOOLEAN DEFAULT TRUE,
-        is_banned BOOLEAN DEFAULT FALSE,
-        is_admin BOOLEAN DEFAULT FALSE,
-        join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        warning_count INT DEFAULT 0,
-        karma INT DEFAULT 0
-      )
-    `);
-
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id BIGINT,
-        message_id INT,
-        content TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-      )
-    `);
-
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS settings (
-        key_name VARCHAR(255) PRIMARY KEY,
-        value TEXT
-      )
-    `);
-  }
-  return db;
-}
 
 // Fungsi utilitas
 function escapeHtml(text) {
@@ -84,79 +38,6 @@ async function checkChannelMembership(userId) {
   } catch (error) {
     return false;
   }
-}
-
-// Fungsi database
-async function getUser(userId) {
-  const db = await initDatabase();
-  const [rows] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
-  return rows[0] || null;
-}
-
-async function createUser(userInfo) {
-  const db = await initDatabase();
-  const isOwner = userInfo.id === OWNER_ID;
-  
-  await db.execute(`
-    INSERT INTO users (id, username, first_name, last_name, is_admin) 
-    VALUES (?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE 
-    username = VALUES(username),
-    first_name = VALUES(first_name),
-    last_name = VALUES(last_name),
-    last_activity = CURRENT_TIMESTAMP
-  `, [userInfo.id, userInfo.username, userInfo.first_name, userInfo.last_name, isOwner]);
-}
-
-async function updateUserActivity(userId) {
-  const db = await initDatabase();
-  await db.execute('UPDATE users SET last_activity = CURRENT_TIMESTAMP WHERE id = ?', [userId]);
-}
-
-async function getAllActiveUsers() {
-  const db = await initDatabase();
-  const [rows] = await db.execute('SELECT * FROM users WHERE is_active = TRUE AND is_banned = FALSE');
-  return rows;
-}
-
-async function getUserCount() {
-  const db = await initDatabase();
-  const [rows] = await db.execute('SELECT COUNT(*) as count FROM users WHERE is_active = TRUE AND is_banned = FALSE');
-  return rows[0].count;
-}
-
-async function banUser(userId, reason = '') {
-  const db = await initDatabase();
-  await db.execute('UPDATE users SET is_banned = TRUE WHERE id = ?', [userId]);
-}
-
-async function unbanUser(userId) {
-  const db = await initDatabase();
-  await db.execute('UPDATE users SET is_banned = FALSE WHERE id = ?', [userId]);
-}
-
-async function promoteUser(userId) {
-  const db = await initDatabase();
-  await db.execute('UPDATE users SET is_admin = TRUE WHERE id = ?', [userId]);
-}
-
-async function demoteUser(userId) {
-  const db = await initDatabase();
-  await db.execute('UPDATE users SET is_admin = FALSE WHERE id = ? AND id != ?', [userId, OWNER_ID]);
-}
-
-async function getSetting(key) {
-  const db = await initDatabase();
-  const [rows] = await db.execute('SELECT value FROM settings WHERE key_name = ?', [key]);
-  return rows[0]?.value || null;
-}
-
-async function setSetting(key, value) {
-  const db = await initDatabase();
-  await db.execute(`
-    INSERT INTO settings (key_name, value) VALUES (?, ?)
-    ON DUPLICATE KEY UPDATE value = VALUES(value)
-  `, [key, value]);
 }
 
 // Pesan-pesan bot
@@ -208,6 +89,26 @@ Mulai kirim pesan untuk bergabung dalam percakapan!`,
 <b>🆘 Butuh Bantuan?</b>
 Hubungi admin jika ada masalah atau pertanyaan.`,
 
+  adminHelp: `👑 <b>Perintah Owner/Admin</b>
+
+<b>🔨 Moderasi:</b>
+/ban [user_id] [alasan] - Ban pengguna
+/unban [user_id] - Unban pengguna
+/promote [user_id] - Angkat admin
+/demote [user_id] - Turunkan admin
+
+<b>📢 Broadcast:</b>
+/broadcast [pesan] - Kirim pesan ke semua
+/broadcast_delay [detik] [pesan] - Broadcast dengan jeda
+
+<b>⚙️ Pengaturan:</b>
+/setwelcome [pesan] - Set pesan welcome
+/stats - Statistik lengkap bot
+/adminpanel - Akses panel admin web
+
+<b>📊 Info:</b>
+/admininfo [reply] - Info detail pengguna`,
+
   notMember: `❌ <b>Akses Ditolak</b>
 
 Untuk menggunakan bot ini, Anda harus bergabung dengan channel resmi kami terlebih dahulu:
@@ -239,25 +140,6 @@ Jika Anda merasa ini adalah kesalahan, hubungi admin.`,
 
   userCount: (count) => `👥 <b>Statistik Pengguna</b>\n\nTotal pengguna aktif: <b>${count}</b> orang`,
 
-  adminHelp: `👑 <b>Perintah Admin</b>
-
-<b>🔨 Moderasi:</b>
-/ban [user_id] [alasan] - Ban pengguna
-/unban [user_id] - Unban pengguna
-/admin [user_id] - Angkat admin
-/unadmin [user_id] - Turunkan admin
-
-<b>📢 Broadcast:</b>
-/broadcast [pesan] - Kirim pesan ke semua
-/broadcast_delay [detik] [pesan] - Broadcast dengan jeda
-
-<b>⚙️ Pengaturan:</b>
-/setwelcome [pesan] - Set pesan welcome
-/stats - Statistik lengkap bot
-
-<b>📊 Info:</b>
-/admininfo [reply] - Info detail pengguna`,
-
   broadcastStart: (total) => `📢 Memulai broadcast ke ${total} pengguna...`,
   broadcastComplete: (success, failed) => `✅ Broadcast selesai!\n\n✅ Berhasil: ${success}\n❌ Gagal: ${failed}`,
   
@@ -278,7 +160,9 @@ Jika Anda merasa ini adalah kesalahan, hubungi admin.`,
   
   cooldown: (minutes) => `⏰ Anda terkena cooldown selama ${minutes} menit karena spam.`,
   
-  pong: `🏓 Pong! Bot berjalan normal.`
+  pong: `🏓 Pong! Bot berjalan normal.`,
+  
+  adminPanel: `🎛️ <b>Panel Admin</b>\n\nAkses panel admin web di:\n${process.env.WEBHOOK_URL}/admin\n\n<i>Gunakan ID Telegram Anda untuk login.</i>`
 };
 
 // Handler perintah
@@ -291,21 +175,21 @@ async function handleStart(msg) {
   }
   
   // Buat atau update user
-  await createUser(msg.from);
+  await db.createUser(msg.from);
   
-  const user = await getUser(userId);
-  if (user.is_banned) {
+  const user = await db.getUser(userId);
+  if (user && user.is_banned) {
     return bot.sendMessage(userId, messages.banned, { parse_mode: 'HTML' });
   }
   
   // Kirim pesan welcome
-  const welcomeMsg = await getSetting('welcome_message') || messages.welcome;
+  const welcomeMsg = await db.getSetting('welcome_message') || messages.welcome;
   bot.sendMessage(userId, welcomeMsg, { parse_mode: 'HTML' });
 }
 
 async function handleHelp(msg) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
   if (!user || !user.is_active) {
     return bot.sendMessage(userId, messages.notInChat);
@@ -313,7 +197,7 @@ async function handleHelp(msg) {
   
   let helpText = messages.help;
   
-  if (user.is_admin) {
+  if (user.is_admin || userId === OWNER_ID) {
     helpText += '\n\n' + messages.adminHelp;
   }
   
@@ -322,7 +206,7 @@ async function handleHelp(msg) {
 
 async function handleInfo(msg) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
   if (!user || !user.is_active) {
     return bot.sendMessage(userId, messages.notInChat);
@@ -334,29 +218,39 @@ async function handleInfo(msg) {
 
 async function handleUsers(msg) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
   if (!user || !user.is_active) {
     return bot.sendMessage(userId, messages.notInChat);
   }
   
-  const count = await getUserCount();
+  const count = await db.getUserCount();
   bot.sendMessage(userId, messages.userCount(count), { parse_mode: 'HTML' });
 }
 
 async function handleLeave(msg) {
   const userId = msg.from.id;
-  const db = await initDatabase();
   
-  await db.execute('UPDATE users SET is_active = FALSE WHERE id = ?', [userId]);
+  // Update user status to inactive
+  if (db.type === 'mongodb') {
+    await db.User.findOneAndUpdate({ id: userId }, { is_active: false });
+  } else {
+    const client = await db.pgPool.connect();
+    try {
+      await client.query('UPDATE users SET is_active = FALSE WHERE id = $1', [userId]);
+    } finally {
+      client.release();
+    }
+  }
+  
   bot.sendMessage(userId, messages.leftChat);
 }
 
 async function handleBan(msg, args) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
-  if (!user || !user.is_admin) {
+  if (!user || (!user.is_admin && userId !== OWNER_ID)) {
     return bot.sendMessage(userId, messages.noPermission);
   }
   
@@ -365,9 +259,9 @@ async function handleBan(msg, args) {
   }
   
   const targetId = parseInt(args[0]);
-  const reason = args.slice(1).join(' ');
+  const reason = args.slice(1).join(' ') || 'Tidak disebutkan';
   
-  await banUser(targetId, reason);
+  await db.banUser(targetId, reason, userId);
   bot.sendMessage(userId, messages.userBanned(reason));
   
   // Notify target
@@ -378,9 +272,9 @@ async function handleBan(msg, args) {
 
 async function handleUnban(msg, args) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
-  if (!user || !user.is_admin) {
+  if (!user || (!user.is_admin && userId !== OWNER_ID)) {
     return bot.sendMessage(userId, messages.noPermission);
   }
   
@@ -389,7 +283,7 @@ async function handleUnban(msg, args) {
   }
   
   const targetId = parseInt(args[0]);
-  await unbanUser(targetId);
+  await db.unbanUser(targetId);
   bot.sendMessage(userId, messages.userUnbanned);
 }
 
@@ -401,19 +295,40 @@ async function handlePromote(msg, args) {
   }
   
   if (args.length !== 1) {
-    return bot.sendMessage(userId, '❌ Format: /admin [user_id]');
+    return bot.sendMessage(userId, '❌ Format: /promote [user_id]');
   }
   
   const targetId = parseInt(args[0]);
-  await promoteUser(targetId);
+  await db.promoteUser(targetId);
   bot.sendMessage(userId, messages.userPromoted);
+}
+
+async function handleDemote(msg, args) {
+  const userId = msg.from.id;
+  
+  if (userId !== OWNER_ID) {
+    return bot.sendMessage(userId, messages.noPermission);
+  }
+  
+  if (args.length !== 1) {
+    return bot.sendMessage(userId, '❌ Format: /demote [user_id]');
+  }
+  
+  const targetId = parseInt(args[0]);
+  const result = await db.demoteUser(targetId);
+  
+  if (result) {
+    bot.sendMessage(userId, messages.userDemoted);
+  } else {
+    bot.sendMessage(userId, '❌ Tidak dapat menurunkan owner atau user tidak ditemukan');
+  }
 }
 
 async function handleBroadcast(msg, args, delay = 0) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
-  if (!user || !user.is_admin) {
+  if (!user || (!user.is_admin && userId !== OWNER_ID)) {
     return bot.sendMessage(userId, messages.noPermission);
   }
   
@@ -422,7 +337,10 @@ async function handleBroadcast(msg, args, delay = 0) {
   }
   
   const message = args.join(' ');
-  const users = await getAllActiveUsers();
+  const users = await db.getAllActiveUsers();
+  
+  // Create broadcast record
+  const broadcast = await db.createBroadcast(message, userId, users.length);
   
   bot.sendMessage(userId, messages.broadcastStart(users.length));
   
@@ -442,14 +360,17 @@ async function handleBroadcast(msg, args, delay = 0) {
     }
   }
   
+  // Update broadcast stats
+  await db.updateBroadcastStats(broadcast.id || broadcast._id, success, failed, 'completed');
+  
   bot.sendMessage(userId, messages.broadcastComplete(success, failed));
 }
 
 async function handleSetWelcome(msg, args) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
-  if (!user || !user.is_admin) {
+  if (!user || (!user.is_admin && userId !== OWNER_ID)) {
     return bot.sendMessage(userId, messages.noPermission);
   }
   
@@ -458,22 +379,67 @@ async function handleSetWelcome(msg, args) {
   }
   
   const welcomeMessage = args.join(' ');
-  await setSetting('welcome_message', welcomeMessage);
+  await db.setSetting('welcome_message', welcomeMessage);
   bot.sendMessage(userId, messages.welcomeSet);
+}
+
+async function handleStats(msg) {
+  const userId = msg.from.id;
+  const user = await db.getUser(userId);
+  
+  if (!user || (!user.is_admin && userId !== OWNER_ID)) {
+    return bot.sendMessage(userId, messages.noPermission);
+  }
+  
+  const stats = await db.getStats();
+  
+  const statsMessage = `📊 <b>Statistik Bot</b>
+
+👥 Total Pengguna: ${stats.totalUsers}
+✅ Pengguna Aktif: ${stats.activeUsers}
+🚫 Pengguna Banned: ${stats.bannedUsers}
+👑 Admin: ${stats.adminUsers}
+💬 Total Pesan: ${stats.totalMessages}
+📅 Pesan Hari Ini: ${stats.todayMessages}
+
+🕐 Diperbarui: ${new Date().toLocaleString('id-ID')}`;
+
+  bot.sendMessage(userId, statsMessage, { parse_mode: 'HTML' });
+}
+
+async function handleAdminPanel(msg) {
+  const userId = msg.from.id;
+  const user = await db.getUser(userId);
+  
+  if (!user || (!user.is_admin && userId !== OWNER_ID)) {
+    return bot.sendMessage(userId, messages.noPermission);
+  }
+  
+  bot.sendMessage(userId, messages.adminPanel, { parse_mode: 'HTML' });
 }
 
 async function relayMessage(msg) {
   const userId = msg.from.id;
-  const user = await getUser(userId);
+  const user = await db.getUser(userId);
   
   if (!user || !user.is_active || user.is_banned) {
     return;
   }
   
-  await updateUserActivity(userId);
+  // Update user activity
+  if (db.type === 'mongodb') {
+    await db.User.findOneAndUpdate({ id: userId }, { last_activity: new Date() });
+  } else {
+    const client = await db.pgPool.connect();
+    try {
+      await client.query('UPDATE users SET last_activity = CURRENT_TIMESTAMP WHERE id = $1', [userId]);
+    } finally {
+      client.release();
+    }
+  }
   
   // Relay ke semua user aktif
-  const users = await getAllActiveUsers();
+  const users = await db.getAllActiveUsers();
   const obfuscatedId = generateObfuscatedId(userId);
   
   let relayText = '';
@@ -569,8 +535,11 @@ module.exports = async (req, res) => {
           case 'unban':
             await handleUnban(msg, args);
             break;
-          case 'admin':
+          case 'promote':
             await handlePromote(msg, args);
+            break;
+          case 'demote':
+            await handleDemote(msg, args);
             break;
           case 'broadcast':
             await handleBroadcast(msg, args);
@@ -581,6 +550,12 @@ module.exports = async (req, res) => {
             break;
           case 'setwelcome':
             await handleSetWelcome(msg, args);
+            break;
+          case 'stats':
+            await handleStats(msg);
+            break;
+          case 'adminpanel':
+            await handleAdminPanel(msg);
             break;
           case 'ping':
             await bot.sendMessage(msg.from.id, messages.pong);

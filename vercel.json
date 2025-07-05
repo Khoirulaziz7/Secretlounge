@@ -2,6 +2,10 @@
   "version": 2,
   "builds": [
     {
+      "src": "package.json",
+      "use": "@vercel/next"
+    },
+    {
       "src": "api/**/*.js",
       "use": "@vercel/node"
     }
@@ -10,14 +14,20 @@
     {
       "src": "/api/(.*)",
       "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ],
   "env": {
     "BOT_TOKEN": "@bot_token",
+    "DATABASE_TYPE": "@database_type",
     "DATABASE_URL": "@database_url",
     "WEBHOOK_URL": "@webhook_url",
     "OWNER_ID": "@owner_id",
     "REQUIRED_CHANNEL": "@required_channel",
-    "SECRET_SALT": "@secret_salt"
+    "SECRET_SALT": "@secret_salt",
+    "JWT_SECRET": "@jwt_secret"
   }
 }

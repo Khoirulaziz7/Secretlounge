@@ -1,18 +1,41 @@
 {
   "name": "secretlounge-indonesia",
-  "version": "2.0.0",
-  "description": "Bot Telegram Anonymous Chat Indonesia",
+  "version": "3.0.0",
+  "description": "Bot Telegram Anonymous Chat Indonesia dengan UI Admin",
   "main": "api/webhook.js",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'Build complete'",
-    "start": "node api/webhook.js"
+    "dev": "npm run build && vercel dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.66.0",
-    "mysql2": "^3.6.5",
+    "mongoose": "^8.0.3",
+    "pg": "^8.11.3",
     "bcryptjs": "^2.4.3",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.3.6",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "chart.js": "^4.4.0",
+    "react-chartjs-2": "^5.2.0",
+    "date-fns": "^2.30.0",
+    "jsonwebtoken": "^9.0.2",
+    "cookie": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "typescript": "^5.3.3",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4"
   },
   "engines": {
     "node": ">=18.0.0"
