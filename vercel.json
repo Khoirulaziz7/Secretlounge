@@ -24,7 +24,7 @@
     "BOT_TOKEN": "5963135520:AAHmimWJje5rptJSqkzFeeVKhxxrvOkKt_g",
     "DATABASE_TYPE": "mongodb",
     "DATABASE_URL": "mongodb+srv://bot:HxU5un6vAwLphBOP@cluster1.uourzcz.mongodb.net/?retryWrites=true&w=majority&appName=cluster1",
-    "WEBHOOK_URL": "",
+    "WEBHOOK_URL": "https://secretlounge-gbj32m5nw-tws-projects-c5ad7a72.vercel.app/",
     "OWNER_ID": "5615921474",
     "REQUIRED_CHANNEL": "xyungcode",
     "SECRET_SALT": "",
